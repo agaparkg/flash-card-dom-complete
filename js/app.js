@@ -8,7 +8,7 @@ const answerInput = document.getElementById("answer-input");
 const questionList = document.getElementById("questions-list");
 
 function getDataLocalStorage() {
-  return JSON.parse(localStorage.getItem("flash-cards")) || [];
+  return JSON.parse(localStorage.getItem("flash-cards")) || {};
 }
 
 function updateLocalStorage(data) {
@@ -23,7 +23,8 @@ closeFormBtn.addEventListener("click", () => {
   questionCard.classList.remove("showItem");
 });
 
-let questions = getDataLocalStorage();
+let questions = getDataLocalStorage(); // {}
+let questionId = null;
 
 questionForm.addEventListener("submit", (e) => {
   e.preventDefault();
@@ -32,16 +33,26 @@ questionForm.addEventListener("submit", (e) => {
   const aValue = answerInput.value.trim();
 
   if (qValue !== "" || aValue !== "") {
-    const newQuestion = {
-      id: questions.length ? questions[questions.length - 1].id + 1 : 1,
-      question: qValue,
-      answer: aValue,
-    };
+    if (questionId) {
+      questions[questionId].question = qValue;
+      questions[questionId].answer = aValue;
+    } else {
+      const newId = Object.keys(questions).length
+        ? Math.max(...Object.keys(questions)) + 1
+        : 1;
 
-    questions.push(newQuestion);
+      const newQuestion = {
+        question: qValue,
+        answer: aValue,
+      };
+
+      questions[newId] = newQuestion;
+    }
+
     updateLocalStorage(questions);
-    generateQuestionList(questions);
+    generateQuestionList();
     clearFields();
+    questionId = null;
   } else {
     errorMessage.classList.add("showItem", "alert-danger");
     errorMessage.textContent = "cannot add empty values";
@@ -57,19 +68,20 @@ function clearFields() {
   answerInput.value = "";
 }
 
-function generateQuestionList(questions) {
+function generateQuestionList() {
   questionList.innerHTML = "";
 
-  console.log("questions", questions);
+  // for (let key in questions) {
+  //   generateQuestionListItem(key, questions[key]);
+  // }
 
-  for (let question of questions) {
-    generateQuestionListItem(question);
+  for (const [key, value] of Object.entries(questions)) {
+    generateQuestionListItem(key, value);
   }
 }
 
-function generateQuestionListItem(questionParam) {
-  console.log(questionParam);
-  const { question, answer } = questionParam;
+function generateQuestionListItem(id, value) {
+  const { question, answer } = value;
 
   const newQItem = `
         <div class="col-md-4">
@@ -82,6 +94,7 @@ function generateQuestionListItem(questionParam) {
             <div class="flashcard-btn d-flex justify-content-between">
               <a
                 href="#"
+                onclick="editQuestion(${id})"
                 id="edit-flashcard"
                 class="btn my-1 edit-flashcard text-uppercase"
                 data-id=""
@@ -89,6 +102,7 @@ function generateQuestionListItem(questionParam) {
               >
               <a
                 href="#"
+                onclick="deleteQuestion(${id})"
                 id="delete-flashcard"
                 class="btn my-1 delete-flashcard text-uppercase"
                 >delete</a
@@ -101,6 +115,26 @@ function generateQuestionListItem(questionParam) {
   questionList.innerHTML += newQItem;
 }
 
-generateQuestionListItem(questions);
+function deleteQuestion(id) {
+  delete questions[id];
 
-function toggleShowAnswer(e) {}
+  updateLocalStorage(questions);
+  generateQuestionList();
+}
+
+function editQuestion(id) {
+  questionCard.classList.add("showItem");
+
+  questionId = id;
+
+  questionInput.value = questions[id].question;
+  answerInput.value = questions[id].answer;
+}
+
+generateQuestionList();
+
+function toggleShowAnswer(e) {
+  e.target.nextElementSibling.classList.toggle("showItem");
+  // e.target.nextElementSibling.classList.add("showItem");
+  // e.target.nextElementSibling.classList.remove("showItem");
+}
